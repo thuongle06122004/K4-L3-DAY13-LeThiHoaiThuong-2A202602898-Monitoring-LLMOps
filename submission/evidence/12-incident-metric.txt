@@ -1,0 +1,17 @@
+﻿# CP3 incident metric evidence
+Challenge ID: day13-k4-l3a-monitoring-llmops-v1
+Cohort: K4
+Incident: rag_slow
+Affected feature: monitoring
+Challenge threshold: 2000 ms
+Window: 2026-09-29T07:56:33.047113Z to 2026-09-29T07:56:48.653152Z
+
+Correlation ID     latency_ms  ttft_ms  tool_name  tool_success
+req-0129bb07       3895        50       retrieval  true
+req-2c46b770       2901        50       retrieval  true
+req-76cd8bef       2913        50       retrieval  true
+req-341ac72d       2920        50       retrieval  true
+req-94452400       2900        51       retrieval  true
+
+Result: 5/5 responses exceeded the 2000 ms challenge threshold; 0 errors; retrieval success 5/5.
+Recovery after disabling rag_slow: req-e3fafd96, latency_ms=1400, tool_success=true.
