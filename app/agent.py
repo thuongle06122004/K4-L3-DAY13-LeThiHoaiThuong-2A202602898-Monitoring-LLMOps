@@ -51,7 +51,7 @@ class LabAgent:
             },
         ):
             started = time.perf_counter()
-            docs = retrieve(message)
+            docs = self._retrieve(message)
             prompt = resolve_prompt(
                 langfuse_client,
                 feature=feature,
@@ -71,10 +71,11 @@ class LabAgent:
                 },
                 version=prompt.version,
             )
-            # TODO (CP2): instrument retrieve() and FakeLLM.generate() as child
-            # observations. The nested generation must receive prompt, usage and cost.
             with propagate_attributes(prompt=prompt.managed_prompt):
-                response = self.llm.generate(prompt.text)
+                response = self._generate(
+                    prompt_text=prompt.text,
+                    managed_prompt=prompt.managed_prompt,
+                )
             quality_score = self._heuristic_quality(message, response.text, docs)
             latency_ms = int((time.perf_counter() - started) * 1000)
             cost_usd = self._estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
@@ -97,6 +98,37 @@ class LabAgent:
             cost_usd=cost_usd,
             quality_score=quality_score,
         )
+
+    @observe(name="retrieve-context", as_type="retriever", capture_input=False, capture_output=False)
+    def _retrieve(self, message: str) -> list[str]:
+        docs = retrieve(message)
+        get_langfuse_client().update_current_span(
+            metadata={
+                "query_preview": summarize_text(message),
+                "document_count": len(docs),
+            }
+        )
+        return docs
+
+    @observe(name="generate-answer", as_type="generation", capture_input=False, capture_output=False)
+    def _generate(self, prompt_text: str, managed_prompt: object | None):
+        response = self.llm.generate(prompt_text)
+        cost_usd = self._estimate_cost(
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
+        get_langfuse_client().update_current_generation(
+            model=response.model,
+            input={"prompt_preview": summarize_text(prompt_text)},
+            output={"answer_preview": summarize_text(response.text)},
+            usage_details={
+                "input": response.usage.input_tokens,
+                "output": response.usage.output_tokens,
+            },
+            cost_details={"total": cost_usd},
+            prompt=managed_prompt,
+        )
+        return response
 
     def _estimate_cost(self, tokens_in: int, tokens_out: int) -> float:
         input_cost = (tokens_in / 1_000_000) * 3

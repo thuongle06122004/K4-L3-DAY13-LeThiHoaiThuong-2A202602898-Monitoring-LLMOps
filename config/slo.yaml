@@ -7,7 +7,14 @@ primary_slo:
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình.
+  error_budget_calculation: >-
+    Error budget = 100% - 99.5% = 0.5% of request_received events in each 28-day
+    window. For example, at 10,000 requests the service may have at most 50 slow or
+    unsuccessful requests before the SLO is exhausted.
+  rationale: >-
+    The 3,000 ms threshold protects interactive chat responsiveness while allowing
+    normal retrieval and generation latency. Re-evaluate the threshold after collecting
+    a representative production baseline.
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5

@@ -9,7 +9,7 @@
 - **Lớp:** K4-L3A
 - **Repository URL:**
 - **Commit SHA cuối:**
-- **Challenge ID:**
+- **Challenge ID:** `day13-k4-l3a-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3a-<MSSV>`
 
 ## 2. Evidence index
@@ -72,14 +72,14 @@
 
 ## 7. Điều tra challenge
 
-- **Challenge ID:**
-- **Khoảng thời gian điều tra:**
-- **Triệu chứng từ metrics:**
-- **Log line và correlation ID liên quan:**
-- **Trace ID và span gây ảnh hưởng:**
-- **Root cause:**
-- **Fix action:**
-- **Preventive measure:**
+- **Challenge ID:** `day13-k4-l3a-monitoring-llmops-v1` (cohort `K4`), incident `rag_slow`, feature `monitoring`, ngưỡng latency `2,000 ms`.
+- **Khoảng thời gian điều tra:** `2026-09-29T07:56:33.047113Z` đến `2026-09-29T07:56:48.653152Z`.
+- **Triệu chứng từ metrics:** Sau khi bật incident và chạy 5 query challenge với concurrency 5, cả 5 response đều vượt ngưỡng: latency `2,900–3,895 ms` (5/5 breach); không có error, TTFT `50–51 ms`, retrieval success `5/5`. Snapshot process-wide sau workload ghi nhận traffic `10`, latency P95 `1,631 ms`, nên điều tra dùng các `response_sent` trong đúng cửa sổ challenge thay vì P95 bị pha bởi traffic baseline.
+- **Log line và correlation ID liên quan:** `data/logs.jsonl` lines 57–66. Correlation IDs: `req-0129bb07`, `req-2c46b770`, `req-76cd8bef`, `req-341ac72d`, `req-94452400`. Ví dụ `req-0129bb07` có `latency_ms=3895`, `tool_name=retrieval`, `tool_success=true`.
+- **Trace ID và span gây ảnh hưởng:** Dùng các correlation IDs trên để lọc trace Langfuse; span cần kiểm tra là root `lab-agent-run` → retriever `retrieve-context`. Trace ID/screenshot Cloud cần được bổ sung tại `evidence/14-incident-trace.png` sau khi mở project cá nhân.
+- **Root cause:** Incident `rag_slow` chủ động thêm `time.sleep(2.5)` trong hàm retrieval (`app/mock_rag.py`) trước khi trả tài liệu. Vì vậy retrieval vẫn thành công nhưng tổng latency tăng vượt SLO/challenge threshold.
+- **Fix action:** Tắt incident bằng `python scripts/inject_incident.py --disable`; xác nhận health endpoint báo `rag_slow: false` và chạy request hồi phục.
+- **Preventive measure:** Alert P95 latency khi vượt 3,000 ms trong 10 phút; điều tra theo correlation ID và waterfall để cô lập retriever chậm; áp dụng timeout/fallback cho vector store và rollback thay đổi retriever/index gây latency.
 
 ## 8. Giải thích và tự đánh giá
 
